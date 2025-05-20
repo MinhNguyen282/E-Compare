@@ -59,22 +59,6 @@ function ProductDetails() {
     );
   }
 
-  // Hardcoded recommendations (simulated from iAsk.Ai)
-  const recommendations = {
-    buy: "Yes, this Naris facial cleanser is highly recommended due to its 4.8/5 rating from 6 reviews, deep cleansing, non-irritating properties, and pH-balanced formula. The 12-month warranty, fast delivery, and good price add to its appeal.",
-    considerations: [
-      "Ensure it suits your skin type (e.g., oily, dry, sensitive). The 'non-irritating' attribute suggests safety for sensitive skin, but check the ingredient list.",
-      "Only 6 reviews are available, so consider checking other platforms for more feedback.",
-      "Verify for potential allergens, as the ingredient list is unavailable."
-    ],
-    complementaryProducts: [
-      "Moisturizer: Neutrogena Hydro Boost (oily skin) or CeraVe Moisturizing Cream (dry skin).",
-      "Toner: Thayers Witch Hazel Toner to enhance pH balance.",
-      "Sunscreen: La Roche-Posay Anthelios SPF 30+ for daytime protection.",
-      "Serum: The Ordinary Vitamin C Suspension for brightening."
-    ]
-  };
-
   return (
     <div className="product-details">
       <Link to="/" className="back-link">← Back to Search</Link>
@@ -169,22 +153,6 @@ function ProductDetails() {
       ) : (
         <p>No reviews data available.</p>
       )}
-      <h2>Recommendations</h2>
-      <div className="recommendations-section">
-        <p><strong>Should You Buy?</strong> {recommendations.buy}</p>
-        <h3>Considerations</h3>
-        <ul>
-          {recommendations.considerations.map((item, index) => (
-            <li key={index}>{item}</li>
-          ))}
-        </ul>
-        <h3>Complementary Products</h3>
-        <ul>
-          {recommendations.complementaryProducts.map((item, index) => (
-            <li key={index}>{item}</li>
-          ))}
-        </ul>
-      </div>
     </div>
   );
 }
