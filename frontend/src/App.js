@@ -20,18 +20,38 @@ function App() {
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
+  const fetchWithRetry = async (url, options = {}, retries = 3) => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const response = await fetch(url, {
+          ...options,
+          headers: {
+            'Content-Type': 'application/json',
+            ...options.headers,
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        return await response.json();
+      } catch (error) {
+        if (i === retries - 1) throw error;
+        // Wait before retrying (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+      }
+    }
+  };
+
   const handleSearch = async (query) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_URL}/search?query=${encodeURIComponent(query)}`);
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      const data = await response.json();
+      const data = await fetchWithRetry(`${API_URL}/search?query=${encodeURIComponent(query)}`);
       setProducts(data);
     } catch (err) {
-      setError(err.message);
+      setError(`Search failed: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -39,20 +59,16 @@ function App() {
 
   const handleAddToCompare = async (product) => {
     if (comparisonQueue.some((item) => item.id === product.id)) {
-      return; // Prevent duplicates
+      return;
     }
     if (comparisonQueue.length >= maxProducts) {
       setError(`Comparison queue is full (maximum ${maxProducts} products). Remove a product to add another.`);
       return;
     }
     try {
-      const response = await fetch(`${API_URL}/product/${product.id}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch product specifications');
-      }
-      const productDetails = await response.json();
+      const productDetails = await fetchWithRetry(`${API_URL}/product/${product.id}`);
       setComparisonQueue([...comparisonQueue, { ...product, specifications: productDetails.specifications }]);
-      setError(null); // Clear any previous errors
+      setError(null);
     } catch (err) {
       setError(`Error adding product to comparison: ${err.message}`);
     }
@@ -99,7 +115,6 @@ function App() {
     setLoading(true);
     setError(null);
     try {
-      // Create the comparison prompt
       const prompt = comparisonQueue.map((product, index) => {
         const specs = product.specifications
           ? product.specifications
@@ -118,22 +133,14 @@ ${specs}`;
         ? `Here are the list of products and attributes:\n\n${prompt}\n\nHelp me compare these products to find which is the best product. Consider price, specifications, and overall value for money.`
         : `Đây là các sản phẩm và thông tin của chúng:\n\n${prompt}\n\nHãy cho tôi biết ưu điểm và nhược điểm của mỗi sản phẩm và tôi nên mua sản phẩm nào nhất`;
 
-      const response = await fetch(`${API_URL}/compare`, {
+      const result = await fetchWithRetry(`${API_URL}/compare`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ prompt: fullPrompt }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to get comparison');
-      }
-
-      const result = await response.json();
       setComparisonResult(result.comparison);
     } catch (err) {
-      setError(err.message);
+      setError(`Comparison failed: ${err.message}`);
     } finally {
       setLoading(false);
     }
