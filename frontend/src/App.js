@@ -14,6 +14,7 @@ function App() {
   const [error, setError] = useState(null);
   const [comparisonResult, setComparisonResult] = useState(null);
   const [language, setLanguage] = useState('en');
+  const [isComparing, setIsComparing] = useState(false);
 
   const productsPerPage = 3; // Changed to show 3 products at a time
   const maxProducts = 6; // Maximum number of products allowed in queue
@@ -112,6 +113,7 @@ function App() {
       return;
     }
 
+    setIsComparing(true);
     setLoading(true);
     setError(null);
     try {
@@ -143,6 +145,7 @@ ${specs}`;
       setError(`Comparison failed: ${err.message}`);
     } finally {
       setLoading(false);
+      setIsComparing(false);
     }
   };
 
@@ -239,11 +242,17 @@ ${specs}`;
                         </label>
                       </div>
                       <button 
-                        className="compare-button"
+                        className={`compare-button ${isComparing ? 'comparing' : ''}`}
                         onClick={handleCompare}
-                        disabled={comparisonQueue.length < 2}
+                        disabled={comparisonQueue.length < 2 || isComparing}
                       >
-                        {language === 'en' ? 'Give me comparison' : 'So sánh sản phẩm'}
+                        {isComparing ? (
+                          <span className="comparing-text">
+                            <span className="loading-dots">Comparing</span>
+                          </span>
+                        ) : (
+                          language === 'en' ? 'Give me comparison' : 'So sánh sản phẩm'
+                        )}
                       </button>
                     </div>
                     {comparisonResult && (
