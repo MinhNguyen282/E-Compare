@@ -13,15 +13,18 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [comparisonResult, setComparisonResult] = useState(null);
+  const [language, setLanguage] = useState('en');
 
   const productsPerPage = 3; // Changed to show 3 products at a time
-  const maxProducts = 5; // Maximum number of products allowed in queue
+  const maxProducts = 6; // Maximum number of products allowed in queue
+
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
   const handleSearch = async (query) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`http://localhost:8000/search?query=${encodeURIComponent(query)}`);
+      const response = await fetch(`${API_URL}/search?query=${encodeURIComponent(query)}`);
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
@@ -43,7 +46,7 @@ function App() {
       return;
     }
     try {
-      const response = await fetch(`http://localhost:8000/product/${product.id}`);
+      const response = await fetch(`${API_URL}/product/${product.id}`);
       if (!response.ok) {
         throw new Error('Failed to fetch product specifications');
       }
@@ -111,9 +114,11 @@ Specifications:
 ${specs}`;
       }).join('\n\n');
 
-      const fullPrompt = `Here are the list of products and attributes:\n\n${prompt}\n\nHelp me compare these products to find which is the best product. Consider price, specifications, and overall value for money.`;
+      const fullPrompt = language === 'en' 
+        ? `Here are the list of products and attributes:\n\n${prompt}\n\nHelp me compare these products to find which is the best product. Consider price, specifications, and overall value for money.`
+        : `Đây là các sản phẩm và thông tin của chúng:\n\n${prompt}\n\nHãy cho tôi biết ưu điểm và nhược điểm của mỗi sản phẩm và tôi nên mua sản phẩm nào nhất`;
 
-      const response = await fetch('http://localhost:8000/compare', {
+      const response = await fetch(`${API_URL}/compare`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -144,8 +149,8 @@ ${specs}`;
               <>
                 <h1>Product Comparison</h1>
                 <Search onSearch={handleSearch} />
-                {loading && <p>Loading...</p>}
-                {error && <p>Error: {error}</p>}
+                {loading && <div className="loading"></div>}
+                {error && <div className="error-message">{error}</div>}
                 <h2>Comparison Queue ({comparisonQueue.length}/{maxProducts})</h2>
                 {comparisonQueue.length === 0 ? (
                   <p>No products in comparison queue.</p>
@@ -206,12 +211,32 @@ ${specs}`;
                       </button>
                     </div>
                     <div className="comparison-actions">
+                      <div className="language-selector">
+                        <label>
+                          <input
+                            type="radio"
+                            value="en"
+                            checked={language === 'en'}
+                            onChange={(e) => setLanguage(e.target.value)}
+                          />
+                          English
+                        </label>
+                        <label>
+                          <input
+                            type="radio"
+                            value="vi"
+                            checked={language === 'vi'}
+                            onChange={(e) => setLanguage(e.target.value)}
+                          />
+                          Tiếng Việt
+                        </label>
+                      </div>
                       <button 
                         className="compare-button"
                         onClick={handleCompare}
                         disabled={comparisonQueue.length < 2}
                       >
-                        Give me comparison
+                        {language === 'en' ? 'Give me comparison' : 'So sánh sản phẩm'}
                       </button>
                     </div>
                     {comparisonResult && (

@@ -14,10 +14,13 @@ except Exception as e:
 
 app = FastAPI()
 
+# Get allowed origins from environment variable or use default
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+
 # Enable CORS to allow frontend requests
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # React frontend
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -26,8 +29,7 @@ app.add_middleware(
 # Initialize OpenAI client
 api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
-    print("Warning: OPENAI_API_KEY not found in environment variables")
-    api_key = "your-api-key-here"  # Replace this with your actual API key for testing
+    raise ValueError("OPENAI_API_KEY not found in environment variables")
 
 openai.api_key = api_key
 
