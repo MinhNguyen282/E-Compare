@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: e-compare-backend
+    env: python
+    pythonVersion: 3.9.0
+    buildCommand: |
+      python -m pip install --upgrade pip
+      pip install -r backend/requirements.txt
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: https://e-compare-frontend.onrender.com 
