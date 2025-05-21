@@ -47,7 +47,11 @@ async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)):
     try:
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT * FROM users WHERE id = %s",
+                """
+                SELECT id, username, email, full_name, is_active 
+                FROM users 
+                WHERE id = %s
+                """,
                 (user_id,)
             )
             user = cursor.fetchone()
@@ -55,4 +59,8 @@ async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)):
                 raise credentials_exception
             return user
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) 
+        print(f"Error fetching user: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Error fetching user data"
+        ) 
