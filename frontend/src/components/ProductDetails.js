@@ -8,19 +8,20 @@ function ProductDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
   useEffect(() => {
     const fetchProductDetails = async () => {
       setLoading(true);
       try {
-        const productResponse = await fetch(`http://localhost:8000/product/${productId}`);
+        const productResponse = await fetch(`${API_URL}/product/${productId}`);
         if (!productResponse.ok) {
           throw new Error('Network response was not ok for product');
         }
         const productData = await productResponse.json();
         setProduct(productData);
 
-        const reviewsResponse = await fetch(`http://localhost:8000/product/${productId}/reviews?page=${currentPage}`);
+        const reviewsResponse = await fetch(`${API_URL}/product/${productId}/reviews?page=${currentPage}`);
         if (!reviewsResponse.ok) {
           throw new Error('Network response was not ok for reviews');
         }
