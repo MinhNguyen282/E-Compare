@@ -1,10 +1,51 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Search from './components/Search';
 import ProductList from './components/ProductList';
 import ProductDetails from './components/ProductDetails';
 import ReactMarkdown from 'react-markdown';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import Login from './components/Login';
+import Signup from './components/Signup';
+import Navbar from './components/Navbar';
+import { GuestProvider, useGuest } from './contexts/GuestContext';
+import GuestMode from './components/GuestMode';
+import Home from './components/Home';
+import Compare from './components/Compare';
 import './App.css';
+
+// Protected Route component
+const ProtectedRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  const { isGuest } = useGuest();
+  const token = localStorage.getItem('token');
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!token && !isGuest) {
+    return <Navigate to="/" />;
+  }
+
+  return children;
+};
+
+// Root Route component to handle redirection
+const RootRoute = () => {
+  const { user, loading } = useAuth();
+  const token = localStorage.getItem('token');
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (token) {
+    return <Navigate to="/home" />;
+  }
+
+  return <GuestMode />;
+};
 
 function App() {
   const [products, setProducts] = useState([]);
@@ -150,129 +191,36 @@ ${specs}`;
   };
 
   return (
-    <Router>
-      <div className="App">
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <>
-                <h1>Product Comparison</h1>
-                <Search onSearch={handleSearch} />
-                {loading && <div className="loading"></div>}
-                {error && <div className="error-message">{error}</div>}
-                <h2>Comparison Queue ({comparisonQueue.length}/{maxProducts})</h2>
-                {comparisonQueue.length === 0 ? (
-                  <p>No products in comparison queue.</p>
-                ) : (
-                  <>
-                    <div className="comparison-container">
-                      <button 
-                        className="nav-arrow prev-arrow"
-                        onClick={handlePrevPage}
-                        disabled={comparisonPage === 1}
-                      >
-                        ←
-                      </button>
-                      <div className="comparison-list">
-                        {displayedProducts.map((product) => (
-                          <div key={product.id} className="comparison-item">
-                            <h3>{product.name}</h3>
-                            <p style={{ margin: '0 0 10px', color: '#007bff', fontWeight: 'bold' }}>
-                              {product.price.toLocaleString()} VND
-                            </p>
-                            <button
-                              className="remove-from-compare-button"
-                              onClick={() => handleRemoveFromCompare(product.id)}
-                            >
-                              Remove
-                            </button>
-                            {product.specifications && product.specifications.length > 0 ? (
-                              <table className="specifications-table">
-                                <thead>
-                                  <tr>
-                                    <th>Attribute</th>
-                                    <th>Value</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {product.specifications.map((spec, specIndex) => (
-                                    spec.attributes.map((attr, attrIndex) => (
-                                      <tr key={`${specIndex}-${attrIndex}`}>
-                                        <td>{attr.name}</td>
-                                        <td>{attr.value}</td>
-                                      </tr>
-                                    ))
-                                  ))}
-                                </tbody>
-                              </table>
-                            ) : (
-                              <p>No specifications available.</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                      <button 
-                        className="nav-arrow next-arrow"
-                        onClick={handleNextPage}
-                        disabled={comparisonPage >= Math.ceil(comparisonQueue.length / productsPerPage)}
-                      >
-                        →
-                      </button>
-                    </div>
-                    <div className="comparison-actions">
-                      <div className="language-selector">
-                        <label>
-                          <input
-                            type="radio"
-                            value="en"
-                            checked={language === 'en'}
-                            onChange={(e) => setLanguage(e.target.value)}
-                          />
-                          English
-                        </label>
-                        <label>
-                          <input
-                            type="radio"
-                            value="vi"
-                            checked={language === 'vi'}
-                            onChange={(e) => setLanguage(e.target.value)}
-                          />
-                          Tiếng Việt
-                        </label>
-                      </div>
-                      <button 
-                        className={`compare-button ${isComparing ? 'comparing' : ''}`}
-                        onClick={handleCompare}
-                        disabled={comparisonQueue.length < 2 || isComparing}
-                      >
-                        {isComparing ? (
-                          <span className="comparing-text">
-                            <span className="loading-dots">Comparing</span>
-                          </span>
-                        ) : (
-                          language === 'en' ? 'Give me comparison' : 'So sánh sản phẩm'
-                        )}
-                      </button>
-                    </div>
-                    {comparisonResult && (
-                      <div className="comparison-result">
-                        <h3>Comparison Result</h3>
-                        <div className="result-content">
-                          <ReactMarkdown>{comparisonResult}</ReactMarkdown>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-                <ProductList products={products} onAddToCompare={handleAddToCompare} />
-              </>
-            }
-          />
-          <Route path="/product/:productId" element={<ProductDetails />} />
-        </Routes>
-      </div>
-    </Router>
+    <AuthProvider>
+      <GuestProvider>
+        <Router>
+          <div className="min-h-screen bg-gray-50">
+            <Navbar />
+            <Routes>
+              <Route path="/" element={<RootRoute />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route
+                path="/home"
+                element={
+                  <ProtectedRoute>
+                    <Home />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/compare"
+                element={
+                  <ProtectedRoute>
+                    <Compare />
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </div>
+        </Router>
+      </GuestProvider>
+    </AuthProvider>
   );
 }
 

@@ -6,6 +6,7 @@ import openai
 import requests
 import os
 from dotenv import load_dotenv
+from auth.routes import router as auth_router
 
 # Load environment variables from .env file
 try:
@@ -34,6 +35,9 @@ if not api_key:
     raise ValueError("OPENAI_API_KEY not found in environment variables")
 
 openai.api_key = api_key
+
+# Include auth routes
+app.include_router(auth_router, prefix="/auth", tags=["auth"])
 
 @app.middleware("http")
 async def add_cors_headers(request, call_next):
@@ -78,7 +82,8 @@ async def search_products(query: str):
                 "brand_name": product.get("brand_name"),
                 "price": product.get("price"),
                 "original_price": product.get("original_price"),
-                "review_count": product.get("review_count")
+                "review_count": product.get("review_count"),
+                "thumbnail_url": product.get("thumbnail_url")
             }
             for product in products
         ]
