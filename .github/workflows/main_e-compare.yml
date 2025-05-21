@@ -86,8 +86,8 @@ jobs:
           application-settings-json: |
             {
               "OPENAI_API_KEY": "${{ secrets.OPENAI_API_KEY }}",
-              "ALLOWED_ORIGINS": "https://e-compare.vercel.app/"
-              "DB_HOST": "e-compare-sql-server-e-compare.j.aivencloud.com",
+              "ALLOWED_ORIGINS": "https://e-compare.vercel.app/",
+              "DB_HOST": "${{ secrets.DB_HOST }}",
               "DB_PASSWORD": "${{ secrets.DB_PASSWORD }}",
               "JWT_SECRET_KEY": "${{ secrets.JWT_SECRET_KEY }}",
             }
