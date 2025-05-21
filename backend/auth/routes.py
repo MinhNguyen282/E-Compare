@@ -16,14 +16,18 @@ load_dotenv()
 router = APIRouter()
 
 # Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__rounds=12  # You can adjust this value based on your security needs
+)
 
 # JWT settings
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key")
 ALGORITHM = "HS256"
 
 # OAuth2 scheme
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token", auto_error=False)
 
 # Models
 class UserCreate(BaseModel):
@@ -50,10 +54,21 @@ class TokenData(BaseModel):
 
 # Helper functions
 def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except Exception as e:
+        print(f"Password verification error: {str(e)}")
+        return False
 
 def get_password_hash(password):
-    return pwd_context.hash(password)
+    try:
+        return pwd_context.hash(password)
+    except Exception as e:
+        print(f"Password hashing error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Error hashing password"
+        )
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -148,6 +163,8 @@ async def signup(user: UserCreate):
             connection.commit()
             
             return {"message": "User created successfully"}
+    except HTTPException as e:
+        raise e
     except Exception as e:
         print(f"Signup error: {str(e)}")
         raise HTTPException(
@@ -186,6 +203,8 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
                 expires_delta=access_token_expires
             )
             return {"access_token": access_token, "token_type": "bearer"}
+    except HTTPException as e:
+        raise e
     except Exception as e:
         print(f"Login error: {str(e)}")
         raise HTTPException(

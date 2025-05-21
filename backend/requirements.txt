@@ -2,11 +2,11 @@ fastapi
 uvicorn
 python-dotenv
 pymysql
-passlib[bcrypt]
+passlib==1.7.4
+bcrypt==4.0.1
 python-jose[cryptography]
 python-multipart
 requests
 openai
 pydantic[email]
-bcrypt
 cryptography
