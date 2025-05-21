@@ -156,6 +156,8 @@ async def get_product_reviews(product_id: int, page: int = 1):
 @app.post("/compare")
 async def compare_products(request: ComparisonRequest):
     try:
+        print(f"Received comparison request with prompt length: {len(request.prompt)}")
+        
         # Call OpenAI API
         response = openai.ChatCompletion.create(
             model="gpt-4o-mini",
@@ -167,6 +169,19 @@ async def compare_products(request: ComparisonRequest):
             max_tokens=1000
         )
         
+        if not response.choices or not response.choices[0].message:
+            raise Exception("Invalid response from OpenAI API")
+            
         return {"comparison": response.choices[0].message.content}
+    except openai.error.AuthenticationError as e:
+        print(f"OpenAI Authentication Error: {str(e)}")
+        raise HTTPException(status_code=500, detail="OpenAI API authentication failed")
+    except openai.error.RateLimitError as e:
+        print(f"OpenAI Rate Limit Error: {str(e)}")
+        raise HTTPException(status_code=429, detail="OpenAI API rate limit exceeded")
+    except openai.error.APIError as e:
+        print(f"OpenAI API Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"OpenAI API error: {str(e)}")
     except Exception as e:
+        print(f"Unexpected error in compare endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting comparison: {str(e)}")

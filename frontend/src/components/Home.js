@@ -116,7 +116,14 @@ ${specs}`;
       });
 
       if (!response.ok) {
-        throw new Error(`Comparison failed: ${response.statusText}`);
+        const errorData = await response.json();
+        if (response.status === 429) {
+          throw new Error('Rate limit exceeded. Please try again in a few minutes.');
+        } else if (response.status === 500) {
+          throw new Error(errorData.detail || 'Failed to compare products. Please try again.');
+        } else {
+          throw new Error(`Comparison failed: ${response.statusText}`);
+        }
       }
 
       const data = await response.json();
