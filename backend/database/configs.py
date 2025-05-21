@@ -11,15 +11,15 @@ timeout = 10
 
 connection = pymysql.connect(
   charset="utf8mb4",
-  connect_timeout=timeout,
+  connect_timeout=10,
   cursorclass=pymysql.cursors.DictCursor,
   db="defaultdb",
   host=os.getenv("DB_HOST"),
   password=os.getenv("DB_PASSWORD"),
-  read_timeout=timeout,
+  read_timeout=10,
   port=13777,
   user="avnadmin",
-  write_timeout=timeout,
+  write_timeout=10,
 )
 
 def create_user_table():
@@ -39,6 +39,7 @@ def create_user_table():
                 INDEX idx_username (username)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             """
+            cursor.execute("DROP TABLE IF EXISTS users")
             cursor.execute(create_table_query)
             connection.commit()
             print("User table created successfully or already exists!")

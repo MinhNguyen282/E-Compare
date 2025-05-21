@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -8,6 +8,9 @@ import os
 from dotenv import load_dotenv
 from auth.routes import router as auth_router
 import openai
+from rate_limit import check_rate_limit
+from auth.utils import get_current_user
+from typing import Optional
 
 # Load environment variables from .env file
 try:
@@ -155,8 +158,26 @@ async def get_product_reviews(product_id: int, page: int = 1):
         raise HTTPException(status_code=500, detail=f"Missing expected data in Tiki reviews response: {str(e)}")
 
 @app.post("/compare")
-async def compare_products(request: ComparisonRequest):
+async def compare_products(
+    request: ComparisonRequest,
+    req: Request,
+    current_user: Optional[dict] = Depends(get_current_user)
+):
     try:
+        # Get client IP address
+        client_ip = req.client.host
+        
+        # Check rate limit based on authentication status
+        is_guest = current_user is None
+        identifier = client_ip if is_guest else str(current_user['id'])
+        is_allowed, remaining_attempts, max_attempts = check_rate_limit(identifier, is_guest)
+        
+        if not is_allowed:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Rate limit exceeded. Please try again later. Remaining attempts: {remaining_attempts}"
+            )
+        
         print(f"Received comparison request with prompt length: {len(request.prompt)}")
         
         # Call OpenAI API
@@ -177,13 +198,18 @@ async def compare_products(request: ComparisonRequest):
         if not response.output:
             raise Exception("Invalid response from OpenAI API")
         
-        # Extract text from the nested response structure
         comparison_text = response.output_text
         
-        # Print the response for debugging
-        print("OpenAI Response:", comparison_text)
-        
-        return {"comparison": comparison_text}
+        return {
+            "comparison": comparison_text,
+            "rate_limit": {
+                "remaining_attempts": remaining_attempts,
+                "max_attempts": max_attempts,
+                "is_guest": is_guest
+            }
+        }
+    except HTTPException as e:
+        raise e
     except Exception as e:
         print(f"Unexpected error in compare endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting comparison: {str(e)}")

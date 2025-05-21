@@ -13,6 +13,8 @@ const Home = () => {
   const [isComparing, setIsComparing] = useState(false);
   const [language, setLanguage] = useState('en');
   const [comparisonPage, setComparisonPage] = useState(1);
+  const [rateLimit, setRateLimit] = useState(null);
+  const [isComparisonExpanded, setIsComparisonExpanded] = useState(true);
   const productsPerPage = 3;
   const maxProducts = 5;
   const navigate = useNavigate();
@@ -128,6 +130,7 @@ ${specs}`;
 
       const data = await response.json();
       setComparisonResult(data.comparison);
+      setRateLimit(data.rate_limit);
     } catch (err) {
       console.error('Comparison error:', err);
       setError(err.message || 'Failed to compare products. Please try again.');
@@ -152,9 +155,45 @@ ${specs}`;
     startIndex + productsPerPage
   );
 
+  const renderComparisonResult = () => {
+    if (!comparisonResult) return null;
+    
+    return (
+      <div className="comparison-result mt-8">
+        <button
+          onClick={() => setIsComparisonExpanded(!isComparisonExpanded)}
+          className="w-full text-left flex justify-between items-center p-4 bg-gray-50 rounded-t-lg hover:bg-gray-100 mb-0"
+        >
+          <h3 className="text-xl font-semibold">Comparison Result</h3>
+          <span className="text-gray-500 text-lg">
+            {isComparisonExpanded ? '▼' : '▶'}
+          </span>
+        </button>
+        {isComparisonExpanded && (
+          <div className="result-content bg-white rounded-b-lg shadow-md p-6 border border-gray-200">
+            <div className="prose max-w-none">
+              <ReactMarkdown>
+                {typeof comparisonResult === 'string' ? comparisonResult : JSON.stringify(comparisonResult, null, 2)}
+              </ReactMarkdown>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold text-gray-900 mb-8">Product Comparison</h1>
+      
+      {rateLimit && (
+        <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+          <p className="text-blue-700">
+            {rateLimit.is_guest ? 'Guest' : 'User'} mode: {rateLimit.remaining_attempts} of {rateLimit.max_attempts} AI comparisons remaining today
+          </p>
+        </div>
+      )}
+      
       <Search onSearch={handleSearch} />
       
       {loading && (
@@ -236,7 +275,7 @@ ${specs}`;
               </button>
             </div>
 
-            <div className="comparison-actions mt-6">
+            <div className="mt-8">
               <div className="language-selector mb-4">
                 <label className="inline-flex items-center mr-4">
                   <input
@@ -260,6 +299,14 @@ ${specs}`;
                 </label>
               </div>
               
+              {rateLimit && (
+                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                  <p className="text-gray-700 text-sm">
+                    Remaining comparisons: {rateLimit.remaining_attempts} of {rateLimit.max_attempts}
+                  </p>
+                </div>
+              )}
+              
               <button 
                 className={`compare-button ${isComparing ? 'comparing' : ''}`}
                 onClick={handleCompare}
@@ -275,18 +322,7 @@ ${specs}`;
               </button>
             </div>
 
-            {comparisonResult && (
-              <div className="comparison-result mt-8">
-                <h3 className="text-xl font-semibold mb-4">Comparison Result</h3>
-                <div className="result-content bg-white rounded-lg shadow-md p-6">
-                  <div className="prose max-w-none">
-                    <ReactMarkdown>
-                      {typeof comparisonResult === 'string' ? comparisonResult : JSON.stringify(comparisonResult, null, 2)}
-                    </ReactMarkdown>
-                  </div>
-                </div>
-              </div>
-            )}
+            {comparisonResult && renderComparisonResult()}
           </>
         )}
       </div>

@@ -8,6 +8,10 @@ from typing import Optional
 import os
 from database.configs import connection
 import pymysql
+from dotenv import load_dotenv
+from .utils import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+
+load_dotenv()
 
 router = APIRouter()
 
@@ -17,7 +21,6 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # JWT settings
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
@@ -34,6 +37,9 @@ class UserResponse(BaseModel):
     email: str
     username: str
     full_name: Optional[str] = None
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
 
 class Token(BaseModel):
     access_token: str
@@ -87,25 +93,51 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+def get_db_connection():
+    return pymysql.connect(
+        charset="utf8mb4",
+        connect_timeout=10,
+        cursorclass=pymysql.cursors.DictCursor,
+        db="defaultdb",
+        host=os.getenv("DB_HOST"),
+        password=os.getenv("DB_PASSWORD"),
+        read_timeout=10,
+        port=13777,
+        user="avnadmin",
+        write_timeout=10,
+    )
+
 # Routes
-@router.post("/signup", response_model=UserResponse)
+@router.post("/signup")
 async def signup(user: UserCreate):
     try:
         with connection.cursor() as cursor:
-            # Check if user already exists
+            # Check if username already exists
             cursor.execute(
-                "SELECT * FROM users WHERE email = %s OR username = %s",
-                (user.email, user.username)
+                "SELECT * FROM users WHERE username = %s",
+                (user.username,)
             )
-            existing_user = cursor.fetchone()
-            if existing_user:
+            if cursor.fetchone():
                 raise HTTPException(
                     status_code=400,
-                    detail="Email or username already registered"
+                    detail="Username already registered"
                 )
-
-            # Create new user
+            
+            # Check if email already exists
+            cursor.execute(
+                "SELECT * FROM users WHERE email = %s",
+                (user.email,)
+            )
+            if cursor.fetchone():
+                raise HTTPException(
+                    status_code=400,
+                    detail="Email already registered"
+                )
+            
+            # Hash the password
             hashed_password = get_password_hash(user.password)
+            
+            # Create new user
             cursor.execute(
                 """
                 INSERT INTO users (email, username, hashed_password, full_name)
@@ -114,37 +146,19 @@ async def signup(user: UserCreate):
                 (user.email, user.username, hashed_password, user.full_name)
             )
             connection.commit()
-
-            # Get the created user
-            cursor.execute(
-                "SELECT id, email, username, full_name FROM users WHERE username = %s",
-                (user.username,)
-            )
-            new_user = cursor.fetchone()
-            return new_user
-
-    except pymysql.Error as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+            
+            return {"message": "User created successfully"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Signup error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="An error occurred during signup"
+        )
 
-@router.post("/token", response_model=Token)
+@router.post("/token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     try:
-        # Create a new connection for each request
-        conn = pymysql.connect(
-            charset="utf8mb4",
-            connect_timeout=10,
-            cursorclass=pymysql.cursors.DictCursor,
-            db="defaultdb",
-            host=os.getenv("DB_HOST"),
-            password=os.getenv("DB_PASSWORD"),
-            port=13777,
-            user="avnadmin",
-        )
-        
-        with conn.cursor() as cursor:
-            # First try to find user by username
+        with connection.cursor() as cursor:
             cursor.execute(
                 "SELECT * FROM users WHERE username = %s",
                 (form_data.username,)
@@ -159,42 +173,44 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
                 )
             
             # Verify password
-            if not verify_password(form_data.password, user["hashed_password"]):
+            if not verify_password(form_data.password, user['hashed_password']):
                 raise HTTPException(
                     status_code=401,
                     detail="Incorrect username or password",
                     headers={"WWW-Authenticate": "Bearer"},
                 )
-
-            # Create access token
+            
             access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
             access_token = create_access_token(
-                data={"sub": user["username"]}, expires_delta=access_token_expires
+                data={"sub": str(user['id'])},
+                expires_delta=access_token_expires
             )
-            
             return {"access_token": access_token, "token_type": "bearer"}
-
-    except pymysql.Error as e:
-        print(f"Database error during login: {str(e)}")  # Add logging
-        raise HTTPException(
-            status_code=500,
-            detail=f"Database error: {str(e)}"
-        )
     except Exception as e:
-        print(f"Unexpected error during login: {str(e)}")  # Add logging
+        print(f"Login error: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=f"Login failed: {str(e)}"
+            detail="An error occurred during login"
         )
-    finally:
-        if 'conn' in locals():
-            conn.close()
 
-@router.get("/me", response_model=UserResponse)
-async def read_users_me(current_user: dict = Depends(get_current_user)):
-    return {
-        "id": current_user["id"],
-        "email": current_user["email"],
-        "username": current_user["username"],
-        "full_name": current_user["full_name"]
-    } 
+@router.get("/me")
+async def get_current_user_info(current_user: dict = Depends(get_current_user)):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT id, username, email, full_name, is_active, created_at, updated_at FROM users WHERE id = %s",
+                (current_user['id'],)
+            )
+            user = cursor.fetchone()
+            if not user:
+                raise HTTPException(
+                    status_code=404,
+                    detail="User not found"
+                )
+            return user
+    except Exception as e:
+        print(f"Get user info error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="An error occurred while fetching user information"
+        ) 
