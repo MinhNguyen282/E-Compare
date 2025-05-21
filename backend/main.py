@@ -173,13 +173,13 @@ async def compare_products(request: ComparisonRequest):
             raise Exception("Invalid response from OpenAI API")
             
         return {"comparison": response.choices[0].message.content}
-    except openai.error.AuthenticationError as e:
+    except openai.AuthenticationError as e:
         print(f"OpenAI Authentication Error: {str(e)}")
         raise HTTPException(status_code=500, detail="OpenAI API authentication failed")
-    except openai.error.RateLimitError as e:
+    except openai.RateLimitError as e:
         print(f"OpenAI Rate Limit Error: {str(e)}")
         raise HTTPException(status_code=429, detail="OpenAI API rate limit exceeded")
-    except openai.error.APIError as e:
+    except openai.APIError as e:
         print(f"OpenAI API Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"OpenAI API error: {str(e)}")
     except Exception as e:
