@@ -87,4 +87,7 @@ jobs:
             {
               "OPENAI_API_KEY": "${{ secrets.OPENAI_API_KEY }}",
               "ALLOWED_ORIGINS": "https://e-compare-frontend.onrender.com"
+              "DB_HOST": "e-compare-sql-server-e-compare.j.aivencloud.com",
+              "DB_PASSWORD": "${{ secrets.DB_PASSWORD }}",
+              "JWT_SECRET_KEY": "${{ secrets.JWT_SECRET_KEY }}",
             }
