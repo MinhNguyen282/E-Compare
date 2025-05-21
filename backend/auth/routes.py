@@ -233,22 +233,38 @@ async def get_current_user_info(current_user: dict = Depends(get_current_user)):
             user = cursor.fetchone()
             
             if not user:
+                print(f"User not found in /me endpoint for id: {current_user['id']}")
                 raise HTTPException(
                     status_code=404,
                     detail="User not found"
                 )
             
             # Convert datetime objects to strings for JSON serialization
-            if user.get('created_at'):
-                user['created_at'] = user['created_at'].isoformat()
-            if user.get('updated_at'):
-                user['updated_at'] = user['updated_at'].isoformat()
+            try:
+                if user.get('created_at'):
+                    user['created_at'] = user['created_at'].isoformat()
+                if user.get('updated_at'):
+                    user['updated_at'] = user['updated_at'].isoformat()
+            except Exception as e:
+                print(f"Error converting datetime: {str(e)}")
+                # If datetime conversion fails, remove the fields
+                user.pop('created_at', None)
+                user.pop('updated_at', None)
             
-            return user
+            # Ensure all fields are JSON serializable
+            return {
+                'id': int(user['id']),
+                'username': str(user['username']),
+                'email': str(user['email']),
+                'full_name': str(user['full_name']) if user.get('full_name') else None,
+                'is_active': bool(user['is_active']),
+                'created_at': user.get('created_at'),
+                'updated_at': user.get('updated_at')
+            }
     except HTTPException as e:
         raise e
     except Exception as e:
-        print(f"Get user info error: {str(e)}")
+        print(f"Get user info error in /me endpoint: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail="An error occurred while fetching user information"

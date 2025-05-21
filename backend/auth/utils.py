@@ -41,7 +41,8 @@ async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)):
         user_id: str = payload.get("sub")
         if user_id is None:
             raise credentials_exception
-    except JWTError:
+    except JWTError as e:
+        print(f"JWT decode error: {str(e)}")
         raise credentials_exception
 
     try:
@@ -52,14 +53,15 @@ async def get_current_user(token: Optional[str] = Depends(oauth2_scheme)):
                 FROM users 
                 WHERE id = %s
                 """,
-                (user_id,)
+                (int(user_id),)  # Convert user_id to integer
             )
             user = cursor.fetchone()
             if user is None:
+                print(f"User not found for id: {user_id}")
                 raise credentials_exception
             return user
     except Exception as e:
-        print(f"Error fetching user: {str(e)}")
+        print(f"Database error in get_current_user: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail="Error fetching user data"

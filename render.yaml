@@ -11,4 +11,4 @@ services:
       - key: OPENAI_API_KEY
         sync: false
       - key: ALLOWED_ORIGINS
-        value: https://e-compare-frontend.onrender.com 
+        value: https://e-compare-frontend.onrender.com
