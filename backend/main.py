@@ -2,11 +2,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-import openai
+from openai import OpenAI
 import requests
 import os
 from dotenv import load_dotenv
 from auth.routes import router as auth_router
+import openai
 
 # Load environment variables from .env file
 try:
@@ -34,7 +35,7 @@ api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
     raise ValueError("OPENAI_API_KEY not found in environment variables")
 
-openai.api_key = api_key
+client = OpenAI(api_key=api_key)
 
 # Include auth routes
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
@@ -159,29 +160,30 @@ async def compare_products(request: ComparisonRequest):
         print(f"Received comparison request with prompt length: {len(request.prompt)}")
         
         # Call OpenAI API
-        response = openai.ChatCompletion.create(
+        response = client.responses.create(
             model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are a helpful product comparison assistant. Analyze the products and provide a detailed comparison, highlighting the pros and cons of each product and making a recommendation based on overall value for money."},
-                {"role": "user", "content": request.prompt}
-            ],
-            temperature=0.7,
-            max_tokens=1000
+            input=[
+                {
+                    "role": "developer",
+                    "content": "You are a helpful product comparison assistant. Analyze the products and provide a detailed comparison, highlighting the pros and cons of each product and making a recommendation based on overall value for money."
+                },
+                {
+                    "role": "user",
+                    "content": request.prompt
+                }
+            ]
         )
         
-        if not response.choices or not response.choices[0].message:
+        if not response.output:
             raise Exception("Invalid response from OpenAI API")
-            
-        return {"comparison": response.choices[0].message.content}
-    except openai.AuthenticationError as e:
-        print(f"OpenAI Authentication Error: {str(e)}")
-        raise HTTPException(status_code=500, detail="OpenAI API authentication failed")
-    except openai.RateLimitError as e:
-        print(f"OpenAI Rate Limit Error: {str(e)}")
-        raise HTTPException(status_code=429, detail="OpenAI API rate limit exceeded")
-    except openai.APIError as e:
-        print(f"OpenAI API Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"OpenAI API error: {str(e)}")
+        
+        # Extract text from the nested response structure
+        comparison_text = response.output_text
+        
+        # Print the response for debugging
+        print("OpenAI Response:", comparison_text)
+        
+        return {"comparison": comparison_text}
     except Exception as e:
         print(f"Unexpected error in compare endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting comparison: {str(e)}")

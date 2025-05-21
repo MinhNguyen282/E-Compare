@@ -279,7 +279,11 @@ ${specs}`;
               <div className="comparison-result mt-8">
                 <h3 className="text-xl font-semibold mb-4">Comparison Result</h3>
                 <div className="result-content bg-white rounded-lg shadow-md p-6">
-                  <ReactMarkdown>{comparisonResult}</ReactMarkdown>
+                  <div className="prose max-w-none">
+                    <ReactMarkdown>
+                      {typeof comparisonResult === 'string' ? comparisonResult : JSON.stringify(comparisonResult, null, 2)}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               </div>
             )}
