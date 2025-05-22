@@ -19,7 +19,7 @@ router = APIRouter()
 pwd_context = CryptContext(
     schemes=["bcrypt"],
     deprecated="auto",
-    bcrypt__rounds=12  # You can adjust this value based on your security needs
+    bcrypt__rounds=12
 )
 
 # JWT settings
@@ -70,24 +70,19 @@ def get_password_hash(password):
             detail="Error hashing password"
         )
 
-def get_db_connection():
-    return pymysql.connect(
-        charset="utf8mb4",
-        connect_timeout=10,
-        cursorclass=pymysql.cursors.DictCursor,
-        db="defaultdb",
-        host=os.getenv("DB_HOST"),
-        password=os.getenv("DB_PASSWORD"),
-        read_timeout=10,
-        port=13777,
-        user="avnadmin",
-        write_timeout=10,
-    )
-
 # Routes
 @router.post("/signup")
 async def signup(user: UserCreate):
     try:
+        print(f"Attempting to create user with email: {user.email} and username: {user.username}")
+        
+        # Validate input
+        if not user.email or not user.username or not user.password:
+            raise HTTPException(
+                status_code=400,
+                detail="Email, username, and password are required"
+            )
+        
         with connection.cursor() as cursor:
             # Check if username already exists
             cursor.execute(
@@ -112,26 +107,41 @@ async def signup(user: UserCreate):
                 )
             
             # Hash the password
-            hashed_password = get_password_hash(user.password)
+            try:
+                hashed_password = get_password_hash(user.password)
+            except Exception as e:
+                print(f"Error hashing password: {str(e)}")
+                raise HTTPException(
+                    status_code=500,
+                    detail="Error processing password"
+                )
             
             # Create new user
-            cursor.execute(
-                """
-                INSERT INTO users (email, username, hashed_password, full_name)
-                VALUES (%s, %s, %s, %s)
-                """,
-                (user.email, user.username, hashed_password, user.full_name)
-            )
-            connection.commit()
-            
-            return {"message": "User created successfully"}
+            try:
+                cursor.execute(
+                    """
+                    INSERT INTO users (email, username, hashed_password, full_name)
+                    VALUES (%s, %s, %s, %s)
+                    """,
+                    (user.email, user.username, hashed_password, user.full_name)
+                )
+                connection.commit()
+                print(f"Successfully created user: {user.username}")
+                return {"message": "User created successfully"}
+            except Exception as e:
+                print(f"Database error during user creation: {str(e)}")
+                connection.rollback()
+                raise HTTPException(
+                    status_code=500,
+                    detail="Error creating user in database"
+                )
     except HTTPException as e:
         raise e
     except Exception as e:
-        print(f"Signup error: {str(e)}")
+        print(f"Unexpected error during signup: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail="An error occurred during signup"
+            detail="An unexpected error occurred during signup"
         )
 
 @router.post("/token")

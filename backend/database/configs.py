@@ -10,16 +10,16 @@ except Exception as e:
 timeout = 10
 
 connection = pymysql.connect(
-  charset="utf8mb4",
-  connect_timeout=10,
-  cursorclass=pymysql.cursors.DictCursor,
-  db="defaultdb",
-  host=os.getenv("DB_HOST"),
-  password=os.getenv("DB_PASSWORD"),
-  read_timeout=10,
-  port=13777,
-  user="avnadmin",
-  write_timeout=10,
+    charset="utf8mb4",
+    connect_timeout=timeout,
+    cursorclass=pymysql.cursors.DictCursor,
+    db=os.getenv("DB_NAME"),
+    host=os.getenv("DB_HOST"),
+    password=os.getenv("DB_PASSWORD"),
+    read_timeout=timeout,
+    port=int(os.getenv("DB_PORT")),
+    user=os.getenv("DB_USER"),
+    write_timeout=timeout,
 )
 
 def create_user_table():
@@ -39,12 +39,12 @@ def create_user_table():
                 INDEX idx_username (username)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             """
-            cursor.execute("DROP TABLE IF EXISTS users")
             cursor.execute(create_table_query)
             connection.commit()
             print("User table created successfully or already exists!")
     except Exception as e:
         print(f"Error creating table: {str(e)}")
+        raise e
     finally:
         connection.close()
 
