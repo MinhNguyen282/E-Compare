@@ -124,10 +124,6 @@ async def get_product_details(product_id: int):
     except KeyError as e:
         raise HTTPException(status_code=500, detail=f"Missing expected data in Tiki response: {str(e)}")
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-    
 @app.get("/product/{product_id}/reviews")
 async def get_product_reviews(product_id: int, page: int = 1):
     try:
@@ -185,7 +181,7 @@ async def compare_products(
             model="gpt-4o-mini",
             input=[
                 {
-                    "role": "developer",
+                    "role": "system",
                     "content": "You are a helpful product comparison assistant. Analyze the products and provide a detailed comparison, highlighting the pros and cons of each product and making a recommendation based on overall value for money."
                 },
                 {
@@ -195,10 +191,10 @@ async def compare_products(
             ]
         )
         
-        if not response.output:
+        if not response.choices or not response.choices[0].message.content:
             raise Exception("Invalid response from OpenAI API")
         
-        comparison_text = response.output_text
+        comparison_text = response.choices[0].message.content
         
         return {
             "comparison": comparison_text,
@@ -213,3 +209,6 @@ async def compare_products(
     except Exception as e:
         print(f"Unexpected error in compare endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting comparison: {str(e)}")
+
+# Note: For Render, use the following start command:
+# uvicorn backend.main:app --host 0.0.0.0 --port $PORT

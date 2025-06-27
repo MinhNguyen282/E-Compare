@@ -19,7 +19,7 @@ def test_connection():
             charset="utf8mb4",
             connect_timeout=10,
             cursorclass=pymysql.cursors.DictCursor,
-            db="defaultdb",
+            db=os.getenv("DB_NAME"),
             host=os.getenv("DB_HOST"),
             password=os.getenv("DB_PASSWORD"),
             read_timeout=10,
